@@ -16,8 +16,8 @@ from app.services.memory import MemoryService
 from app.services.style import StyleService
 from app.repositories.contacts import ContactRepository, ConversationRepository
 from app.repositories.messages import MessageRepository
+from app.providers.gemini import GeminiProvider
 from app.repositories.operations import (
-    AIInteractionRepository,
     ApprovalRepository,
     OutboundJobRepository,
     AuditLogRepository,
@@ -25,6 +25,7 @@ from app.repositories.operations import (
 )
 from app.providers.llm import GenerateResponseRequest, GenerateResponseResult
 from app.providers.mock_llm import MockLLMProvider
+from app.providers.openrouter import OpenRouterProvider
 from app.providers.mock_messaging import MockMessagingProvider
 from app.models.models import EventType
 
@@ -44,7 +45,13 @@ async def process_burst(session: AsyncSession, conversation_id: str, messages: l
     audit_repo = AuditLogRepository(session)
     event_repo = SystemEventRepository(session)
     messaging = MockMessagingProvider()
-    llm = MockLLMProvider()
+    provider = (settings.LLM_PROVIDER or "mock").lower()
+    if provider == "openrouter":
+        llm = OpenRouterProvider()
+    elif provider == "gemini":
+        llm = GeminiProvider()
+    else:
+        llm = MockLLMProvider()
     style_profile = await style_service.get_profile(user_id="default")
     context = messages[-5:]
     request = GenerateResponseRequest(conversation_id=conversation_id, incoming_messages=context, style_profile=style_profile)
